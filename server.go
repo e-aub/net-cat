@@ -14,18 +14,26 @@ type Connection struct {
 	Conn net.Conn
 }
 
-type Connections struct {
+type Conns struct {
 	Connections []Connection
 	mu          sync.Mutex
 }
 
-func (Connections *Connections) Delete(name string) {
+var Connections Conns
+
+func (Connections *Conns) Delete(name string) {
 	Connections.mu.Lock()
 	for index, conn := range Connections.Connections {
 		if conn.Name == name {
 			Connections.Connections = append(Connections.Connections[:index], Connections.Connections[index+1:]...)
 		}
 	}
+	Connections.mu.Unlock()
+}
+
+func (Connections *Conns) Add(Connection Connection) {
+	Connections.mu.Lock()
+	Connections.Connections = append(Connections.Connections, Connection)
 	Connections.mu.Unlock()
 }
 
@@ -69,15 +77,12 @@ func handleConnection(conn net.Conn) {
 			}
 			continue
 		}
-		// Connections = append(Connections, Connection{Name: name, Conn: conn})
+		Connections.Add(Connection{Name: name, Conn: conn})
 		for {
 			len, err := conn.Read(buffer)
 			if err != nil {
 				if err.Error() == "EOF" {
-					for index, connection := range Connections.Connections {
-						if connection.Name == name {
-						}
-					}
+					Connections.Delete(name)
 					return
 				}
 				log.Fatalln(err)
