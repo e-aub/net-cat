@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"time"
 
 	"netcat/global"
@@ -12,15 +13,22 @@ import (
 var Connections global.Conns
 
 func main() {
+	args := os.Args[1:]
+	if len(args) != 1 {
+		fmt.Fprintln(os.Stderr, "Invalid arguments\nUsage:go run . <PORT>")
+		return
+	}
+	port := fmt.Sprint(":", args[0])
 	MessageChan := make(chan global.Message)
 	done := make(chan struct{})
 	defer close(done)
 
 	global.InitLogo()
-	ln, err := net.Listen("tcp", ":2525")
+	ln, err := net.Listen("tcp", port)
 	if err != nil {
 		log.Fatalln(err)
 	}
+	// logs.MakeFile()
 	go func(messageChan chan global.Message, done chan struct{}) {
 		for {
 			select {
@@ -31,7 +39,7 @@ func main() {
 			}
 		}
 	}(MessageChan, done)
-	fmt.Println("Listening on the port :2525")
+	fmt.Printf("Listening on the port %s\n", port)
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
@@ -43,7 +51,7 @@ func main() {
 
 func handleConnection(conn net.Conn, messageChan chan global.Message) {
 	defer conn.Close()
-
+	fmt.Println(conn.RemoteAddr().String())
 	conn.Write(global.Logo)
 	buffer := make([]byte, 1024)
 	len, err := conn.Read(buffer)
